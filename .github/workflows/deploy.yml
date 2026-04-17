@@ -31,6 +31,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            docker system prune -af --volumes
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest
             docker stop azar-parques || true
             docker rm azar-parques || true
