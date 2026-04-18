@@ -5,9 +5,14 @@ import java.util.List;
 
 public class CreateGameMessage {
 
+    @JsonProperty("gameId")      // ← agregar esto
+    private String gameId;
+
     @JsonProperty("players")
     private List<PlayerInfo> players;
 
+    public String getGameId() { return gameId; }           // ← agregar
+    public void setGameId(String gameId) { this.gameId = gameId; } // ← agregar
     public List<PlayerInfo> getPlayers() { return players; }
     public void setPlayers(List<PlayerInfo> players) { this.players = players; }
 
