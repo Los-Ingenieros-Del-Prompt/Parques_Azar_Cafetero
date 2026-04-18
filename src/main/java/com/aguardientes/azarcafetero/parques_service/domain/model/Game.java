@@ -1,5 +1,6 @@
 package com.aguardientes.azarcafetero.parques_service.domain.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -22,10 +23,10 @@ public class Game {
 
     public Game(String id, List<Player> players) {
         this.id = id;
-        this.players = players;
         this.currentTurn = new Random().nextInt(players.size());
         this.finished = false;
         this.diceRolled = false;
+        this.players = new ArrayList<>(players);
     }
 
     // ─── Roll ────────────────────────────────────────────────────────────────
@@ -225,6 +226,11 @@ public class Game {
                 .filter(p -> p.getId().equals(playerId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Jugador no encontrado: " + playerId));
+    }
+
+    public void addPlayer(Player player) {
+        if (players.size() >= 4) throw new IllegalStateException("El juego ya tiene 4 jugadores");
+        players.add(player);
     }
 
     // ─── Getters ─────────────────────────────────────────────────────────────

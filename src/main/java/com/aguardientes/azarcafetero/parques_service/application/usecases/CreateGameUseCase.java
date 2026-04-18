@@ -19,9 +19,9 @@ public class CreateGameUseCase {
         this.repository = repository;
     }
 
-    public Game execute(List<PlayerInput> playerInputs) {
-        if (playerInputs.size() < 2 || playerInputs.size() > 4) {
-            throw new IllegalArgumentException("El juego requiere entre 2 y 4 jugadores");
+    public Game execute(String gameId, List<PlayerInput> playerInputs) {
+        if (playerInputs.size() < 1 || playerInputs.size() > 4) {
+            throw new IllegalArgumentException("El juego requiere entre 1 y 4 jugadores");
         }
 
         List<Player> players = new ArrayList<>();
@@ -30,9 +30,14 @@ public class CreateGameUseCase {
             players.add(new Player(input.id(), input.name(), COLORS[i], EXIT_POSITIONS[i]));
         }
 
-        Game game = new Game(UUID.randomUUID().toString(), players);
+        Game game = new Game(gameId, players);  // ← usa el gameId recibido
         repository.save(game);
         return game;
+    }
+
+    // Mantener el método original para compatibilidad con REST
+    public Game execute(List<PlayerInput> playerInputs) {
+        return execute(UUID.randomUUID().toString(), playerInputs);
     }
 
     public record PlayerInput(String id, String name) {}

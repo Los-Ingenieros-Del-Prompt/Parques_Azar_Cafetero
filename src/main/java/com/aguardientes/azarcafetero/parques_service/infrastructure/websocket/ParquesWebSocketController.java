@@ -4,8 +4,11 @@ import com.aguardientes.azarcafetero.parques_service.application.usecases.Create
 import com.aguardientes.azarcafetero.parques_service.application.usecases.MovePieceUseCase;
 import com.aguardientes.azarcafetero.parques_service.application.usecases.RollDiceUseCase;
 import com.aguardientes.azarcafetero.parques_service.domain.model.Game;
+import com.aguardientes.azarcafetero.parques_service.domain.model.Player;
+import com.aguardientes.azarcafetero.parques_service.domain.ports.GameRepository;
 import com.aguardientes.azarcafetero.parques_service.entrypoints.GameResponse;
 import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dto.CreateGameMessage;
+import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dto.JoinGameMessage;
 import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dto.MovePieceMessage;
 import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dto.RollDiceMessage;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -14,6 +17,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -21,81 +25,101 @@ import java.util.Objects;
 @Controller
 public class ParquesWebSocketController {
 
+    private static final int[] EXIT_POSITIONS = {0, 17, 34, 51};
+    private static final String[] COLORS = {"AMARILLO", "AZUL", "ROJO", "VERDE"};
+
     private final CreateGameUseCase createGameUseCase;
     private final RollDiceUseCase rollDiceUseCase;
     private final MovePieceUseCase movePieceUseCase;
+    private final GameRepository gameRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     public ParquesWebSocketController(
             CreateGameUseCase createGameUseCase,
             RollDiceUseCase rollDiceUseCase,
             MovePieceUseCase movePieceUseCase,
+            GameRepository gameRepository,
             SimpMessagingTemplate messagingTemplate) {
         this.createGameUseCase = Objects.requireNonNull(createGameUseCase);
         this.rollDiceUseCase = Objects.requireNonNull(rollDiceUseCase);
         this.movePieceUseCase = Objects.requireNonNull(movePieceUseCase);
+        this.gameRepository = Objects.requireNonNull(gameRepository);
         this.messagingTemplate = Objects.requireNonNull(messagingTemplate);
     }
 
     /**
-     * Create a new Parqués game.
-     * Send to: /app/game/create
-     * Payload: { "players": [{"id":"p1","name":"Alice"}, ...] }
-     * Broadcasts to: /topic/lobby  and  /topic/game/{gameId}
+     * Crea el juego con el gameId recibido del frontend.
+     * Si ya existe, lo ignora. Siempre hace join del jugador.
      */
     @MessageMapping("/game/create")
     public void createGame(CreateGameMessage msg) {
+        String gameId = msg.getGameId();
         List<CreateGameUseCase.PlayerInput> inputs = msg.getPlayers().stream()
                 .map(p -> new CreateGameUseCase.PlayerInput(p.getId(), p.getName()))
                 .toList();
 
-        Game game = createGameUseCase.execute(inputs);
-        GameResponse response = GameResponse.from(game);
+        Game game;
+        try {
+            game = gameRepository.findById(gameId);
+            // El juego ya existe — no hacer nada, el join se encarga
+        } catch (IllegalArgumentException e) {
+            // El juego no existe — crearlo
+            game = createGameUseCase.execute(gameId, inputs);
+        }
 
-        messagingTemplate.convertAndSend("/topic/lobby", response);
-        messagingTemplate.convertAndSend("/topic/game/" + game.getId(), response);
+        messagingTemplate.convertAndSend("/topic/game/" + game.getId(), GameResponse.from(game));
     }
 
     /**
-     * Roll dice for the current player.
-     * Send to: /app/game/{gameId}/roll
-     * Payload: { "playerId": "p1" }
-     * Broadcasts to: /topic/game/{gameId}
+     * Un jugador se une a un juego existente.
+     * Send to: /app/game/{gameId}/join
+     * Payload: { "gameId": "...", "playerId": "...", "playerName": "..." }
      */
-    @MessageMapping("/game/{gameId}/roll")
-    public void rollDice(
-            RollDiceMessage msg,
-            @DestinationVariable String gameId) {
+    @MessageMapping("/game/{gameId}/join")
+    public void joinGame(JoinGameMessage msg, @DestinationVariable String gameId) {
+        Game game;
+        try {
+            game = gameRepository.findById(gameId);
+        } catch (IllegalArgumentException e) {
+            // El juego no existe aún, crear con este jugador
+            List<CreateGameUseCase.PlayerInput> inputs =
+                    List.of(new CreateGameUseCase.PlayerInput(msg.getPlayerId(), msg.getPlayerName()));
+            game = createGameUseCase.execute(gameId, inputs);
+            messagingTemplate.convertAndSend("/topic/game/" + game.getId(), GameResponse.from(game));
+            return;
+        }
 
+        // Verificar si el jugador ya está en el juego
+        boolean alreadyIn = game.getPlayers().stream()
+                .anyMatch(p -> p.getId().equals(msg.getPlayerId()));
+
+        if (!alreadyIn && game.getPlayers().size() < 4) {
+            game.addPlayer(new Player(
+                    msg.getPlayerId(),
+                    msg.getPlayerName(),
+                    COLORS[game.getPlayers().size()],
+                    EXIT_POSITIONS[game.getPlayers().size()]
+            ));
+            gameRepository.save(game);
+        }
+
+        messagingTemplate.convertAndSend("/topic/game/" + game.getId(), GameResponse.from(game));
+    }
+
+    @MessageMapping("/game/{gameId}/roll")
+    public void rollDice(RollDiceMessage msg, @DestinationVariable String gameId) {
         Game game = rollDiceUseCase.execute(gameId, msg.getPlayerId());
         messagingTemplate.convertAndSend("/topic/game/" + gameId, GameResponse.from(game));
     }
 
-    /**
-     * Move a piece for the current player.
-     * Send to: /app/game/{gameId}/move
-     * Payload: { "playerId": "p1", "pieceId": "p1-piece-0" }
-     * Broadcasts to: /topic/game/{gameId}
-     */
     @MessageMapping("/game/{gameId}/move")
-    public void movePiece(
-            MovePieceMessage msg,
-            @DestinationVariable String gameId) {
-
+    public void movePiece(MovePieceMessage msg, @DestinationVariable String gameId) {
         Game game = movePieceUseCase.execute(gameId, msg.getPlayerId(), msg.getPieceId());
         messagingTemplate.convertAndSend("/topic/game/" + gameId, GameResponse.from(game));
     }
 
-    /**
-     * Handles domain errors (wrong turn, invalid move, etc.) and sends
-     * the error message back to the /topic/game/{gameId}/errors topic
-     * so the client can display it without losing connection.
-     */
     @MessageExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
     public void handleDomainError(RuntimeException ex) {
-        // Best-effort: broadcast error to a general errors topic.
-        // Clients can subscribe to /topic/errors for user-facing messages.
-        messagingTemplate.convertAndSend("/topic/errors",
-                Map.of("error", ex.getMessage()));
+        messagingTemplate.convertAndSend("/topic/errors", Map.of("error", ex.getMessage()));
     }
 }
