@@ -31,7 +31,7 @@ public class Player {
     }
 
     public boolean hasFinished() {
-        return pieces.stream().allMatch(Piece::isAtHome);
+        return pieces.stream().allMatch(Piece::isAtVictory);
     }
 
     public boolean allPiecesInJail() {
@@ -47,7 +47,7 @@ public class Player {
     }
 
     public List<Piece> getActivePieces() {
-        return pieces.stream().filter(p -> !p.isInJail() && !p.isAtHome()).toList();
+        return pieces.stream().filter(p -> !p.isInJail() && !p.isAtVictory()).toList();
     }
 
     public Piece getMostAdvancedActivePiece() {

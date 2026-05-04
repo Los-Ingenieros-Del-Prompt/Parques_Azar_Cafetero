@@ -3,8 +3,10 @@ package com.aguardientes.azarcafetero.parques_service.domain.model;
 public class Piece {
 
     private static final int JAIL = -1;
-    public static final int HOME = 68;
-    private static final int BOARD_SIZE = 68;
+    private static final int COMMON_TRACK = 68;
+    private static final int LADDER_START = 68;
+    public static final int VICTORY = 76;
+    private static final int LADDER_SIZE = 8;
 
     private final String id;
     private final int exitAbsolutePosition;
@@ -17,7 +19,8 @@ public class Piece {
     }
 
     public boolean isInJail() { return relativePosition == JAIL; }
-    public boolean isAtHome() { return relativePosition >= HOME; }
+    public boolean isAtVictory() { return relativePosition == VICTORY; }
+    public boolean isOnLadder() { return relativePosition >= LADDER_START && relativePosition < VICTORY; }
 
     public void exitJail() {
         if (!isInJail()) throw new IllegalStateException("La ficha no está en la cárcel");
@@ -27,35 +30,37 @@ public class Piece {
     public void move(int steps) {
         if (isInJail()) throw new IllegalStateException("La ficha está en la cárcel");
         int newPos = relativePosition + steps;
-        if (newPos > HOME) {
+        if (newPos > VICTORY) {
             throw new IllegalStateException(
-                "Necesitas exactamente " + (HOME - relativePosition) + " para entrar a la casa"
+                "Necesitas exactamente " + (VICTORY - relativePosition) + " para llegar a la victoria"
             );
         }
         this.relativePosition = newPos;
     }
 
     public boolean canMove(int steps) {
-        if (isInJail() || isAtHome()) return false;
-        return relativePosition + steps <= HOME;
+        if (isInJail() || isAtVictory()) return false;
+        return relativePosition + steps <= VICTORY;
     }
 
     public void sendToJail() { this.relativePosition = JAIL; }
 
-    public void sendHome() { this.relativePosition = HOME; }
+    public void sendHome() { this.relativePosition = LADDER_START; }
 
     public int getAbsolutePosition() {
         if (isInJail()) return JAIL;
-        if (isAtHome()) return HOME;
-        return (exitAbsolutePosition + relativePosition) % BOARD_SIZE;
+        if (isAtVictory()) return VICTORY;
+        if (isOnLadder()) return relativePosition;
+        return (exitAbsolutePosition + relativePosition) % COMMON_TRACK;
     }
 
     public int getAbsolutePositionAfterMove(int steps) {
-        if (isInJail() || isAtHome()) return -1;
+        if (isInJail() || isAtVictory()) return -1;
         int newRelPos = relativePosition + steps;
-        if (newRelPos > HOME) return -1;
-        if (newRelPos == HOME) return HOME;
-        return (exitAbsolutePosition + newRelPos) % BOARD_SIZE;
+        if (newRelPos > VICTORY) return -1;
+        if (newRelPos == VICTORY) return VICTORY;
+        if (newRelPos >= LADDER_START) return newRelPos;
+        return (exitAbsolutePosition + newRelPos) % COMMON_TRACK;
     }
 
     public String getId() { return id; }

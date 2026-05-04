@@ -7,8 +7,9 @@ import java.util.Set;
 
 public class Game {
 
-    private static final Set<Integer> SAFE_SQUARES = Set.of(8, 25, 42, 59);
-    private static final int BOARD_SIZE = 68;
+    private static final Set<Integer> SAFE_SQUARES = Set.of(0, 9, 17, 26, 34, 43, 51, 60);
+    private static final int COMMON_TRACK = 68;
+    private static final int VICTORY = 76;
 
     private final String id;
     private final List<Player> players;
@@ -173,13 +174,13 @@ public class Game {
 
     private boolean checkCaptures(Player currentPlayer, Piece movedPiece) {
         int pos = movedPiece.getAbsolutePosition();
-        if (pos < 0 || movedPiece.isAtHome() || SAFE_SQUARES.contains(pos)) return false;
+        if (pos < 0 || movedPiece.isAtVictory() || movedPiece.isOnLadder() || SAFE_SQUARES.contains(pos)) return false;
 
         boolean captured = false;
         for (Player opponent : players) {
             if (opponent.getId().equals(currentPlayer.getId())) continue;
             for (Piece op : opponent.getPieces()) {
-                if (!op.isInJail() && !op.isAtHome() && op.getAbsolutePosition() == pos) {
+                if (!op.isInJail() && !op.isAtVictory() && !op.isOnLadder() && op.getAbsolutePosition() == pos) {
                     op.sendToJail();
                     captured = true;
                     break;
@@ -193,7 +194,7 @@ public class Game {
     private boolean hasKillOpportunity(Player player, int steps) {
         for (Piece piece : player.getActivePieces()) {
             int targetPos = piece.getAbsolutePositionAfterMove(steps);
-            if (targetPos < 0 || SAFE_SQUARES.contains(targetPos)) continue;
+            if (targetPos < 0 || piece.isOnLadder() || SAFE_SQUARES.contains(targetPos)) continue;
             if (hasOpponentAt(player.getId(), targetPos)) return true;
         }
         return false;
@@ -203,7 +204,7 @@ public class Game {
         for (Player opponent : players) {
             if (opponent.getId().equals(currentPlayerId)) continue;
             for (Piece p : opponent.getPieces()) {
-                if (!p.isInJail() && !p.isAtHome() && p.getAbsolutePosition() == absPos) return true;
+                if (!p.isInJail() && !p.isAtVictory() && !p.isOnLadder() && p.getAbsolutePosition() == absPos) return true;
             }
         }
         return false;

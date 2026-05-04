@@ -11,7 +11,7 @@ import java.util.UUID;
 public class CreateGameUseCase {
 
     private static final int[] EXIT_POSITIONS = {0, 17, 34, 51};
-    private static final String[] COLORS = {"AMARILLO", "AZUL", "ROJO", "VERDE"};
+    private static final String[] COLORS = {"AMARILLO", "AZUL", "VERDE", "ROJO"};
 
     private final GameRepository repository;
 
