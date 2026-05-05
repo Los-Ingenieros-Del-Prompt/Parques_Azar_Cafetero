@@ -3,24 +3,34 @@ package com.aguardientes.azarcafetero.parques_service.domain.model;
 public class Piece {
 
     private static final int JAIL = -1;
-    private static final int COMMON_TRACK = 68;
-    private static final int LADDER_START = 68;
-    public static final int VICTORY = 76;
-    private static final int LADDER_SIZE = 8;
+    private static final int COMMON_TRACK = 64;
+    private static final int LADDER_START = 64;
 
     private final String id;
+    private final String color;
     private final int exitAbsolutePosition;
     private int relativePosition;
 
-    public Piece(String id, int exitAbsolutePosition) {
+    public Piece(String id, String color, int exitAbsolutePosition) {
         this.id = id;
+        this.color = color;
         this.exitAbsolutePosition = exitAbsolutePosition;
         this.relativePosition = JAIL;
     }
 
+    public int getVictoryPosition() {
+        return switch (color) {
+            case "AMARILLO" -> 70;
+            case "AZUL" -> 78;
+            case "VERDE" -> 89;
+            case "ROJO" -> 97;
+            default -> 100;
+        };
+    }
+
     public boolean isInJail() { return relativePosition == JAIL; }
-    public boolean isAtVictory() { return relativePosition == VICTORY; }
-    public boolean isOnLadder() { return relativePosition >= LADDER_START && relativePosition < VICTORY; }
+    public boolean isAtVictory() { return relativePosition >= getVictoryPosition() - 64; }
+    public boolean isOnLadder() { return relativePosition >= LADDER_START; }
 
     public void exitJail() {
         if (!isInJail()) throw new IllegalStateException("La ficha no está en la cárcel");
@@ -30,9 +40,10 @@ public class Piece {
     public void move(int steps) {
         if (isInJail()) throw new IllegalStateException("La ficha está en la cárcel");
         int newPos = relativePosition + steps;
-        if (newPos > VICTORY) {
+        int victoryRel = getVictoryPosition() - 64;
+        if (newPos > victoryRel) {
             throw new IllegalStateException(
-                "Necesitas exactamente " + (VICTORY - relativePosition) + " para llegar a la victoria"
+                "Necesitas exactamente " + (victoryRel - relativePosition) + " para llegar a la victoria"
             );
         }
         this.relativePosition = newPos;
@@ -40,7 +51,7 @@ public class Piece {
 
     public boolean canMove(int steps) {
         if (isInJail() || isAtVictory()) return false;
-        return relativePosition + steps <= VICTORY;
+        return relativePosition + steps <= (getVictoryPosition() - 64);
     }
 
     public void sendToJail() { this.relativePosition = JAIL; }
@@ -49,18 +60,38 @@ public class Piece {
 
     public int getAbsolutePosition() {
         if (isInJail()) return JAIL;
-        if (isAtVictory()) return VICTORY;
-        if (isOnLadder()) return relativePosition;
-        return (exitAbsolutePosition + relativePosition) % COMMON_TRACK;
+        if (relativePosition < COMMON_TRACK) {
+            return (exitAbsolutePosition + relativePosition) % COMMON_TRACK;
+        }
+        // Asymmetric Ladder mapping
+        int ladderRelative = relativePosition - LADDER_START;
+        return switch (color) {
+            case "AMARILLO" -> 64 + ladderRelative;
+            case "AZUL" -> 71 + ladderRelative;
+            case "VERDE" -> 79 + ladderRelative;
+            case "ROJO" -> 90 + ladderRelative;
+            default -> relativePosition;
+        };
     }
 
     public int getAbsolutePositionAfterMove(int steps) {
         if (isInJail() || isAtVictory()) return -1;
         int newRelPos = relativePosition + steps;
-        if (newRelPos > VICTORY) return -1;
-        if (newRelPos == VICTORY) return VICTORY;
-        if (newRelPos >= LADDER_START) return newRelPos;
-        return (exitAbsolutePosition + newRelPos) % COMMON_TRACK;
+        int victoryRel = getVictoryPosition() - 64;
+        if (newRelPos > victoryRel) return -1;
+        
+        if (newRelPos < COMMON_TRACK) {
+            return (exitAbsolutePosition + newRelPos) % COMMON_TRACK;
+        }
+        
+        int ladderRelative = newRelPos - LADDER_START;
+        return switch (color) {
+            case "AMARILLO" -> 64 + ladderRelative;
+            case "AZUL" -> 71 + ladderRelative;
+            case "VERDE" -> 79 + ladderRelative;
+            case "ROJO" -> 90 + ladderRelative;
+            default -> newRelPos;
+        };
     }
 
     public String getId() { return id; }

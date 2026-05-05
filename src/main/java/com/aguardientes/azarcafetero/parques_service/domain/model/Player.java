@@ -26,7 +26,7 @@ public class Player {
         this.consecutivePairs = 0;
         this.pieces = new ArrayList<>();
         for (int i = 0; i < PIECES_PER_PLAYER; i++) {
-            pieces.add(new Piece(id + "-piece-" + i, exitPosition));
+            pieces.add(new Piece(id + "-piece-" + i, color, exitPosition));
         }
     }
 
