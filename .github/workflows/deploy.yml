@@ -2,7 +2,7 @@ name: Deploy Parques Service
 
 on:
   push:
-    branches: [feature/despliegue]
+    branches: [main, feature/despliegue]
 
 jobs:
   build-and-deploy:
