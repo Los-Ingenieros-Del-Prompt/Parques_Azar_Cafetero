@@ -18,48 +18,67 @@ public class Piece {
         this.relativePosition = JAIL;
     }
 
-    public int getVictoryPosition() {
+    /**
+     * Retorna la posición RELATIVA necesaria para ganar (distancia total desde la
+     * salida).
+     */
+    public int getVictoryRelative() {
         return switch (color) {
-            case "AMARILLO" -> 70;
-            case "AZUL" -> 78;
-            case "VERDE" -> 89;
-            case "ROJO" -> 97;
+            case "AMARILLO" -> 70; // 64 (track) + (70-64 ladder)
+            case "AZUL" -> 71; // 64 (track) + (78-71 ladder)
+            case "VERDE" -> 74; // 64 (track) + (89-79 ladder)
+            case "ROJO" -> 71; // 64 (track) + (97-90 ladder)
             default -> 100;
         };
     }
 
-    public boolean isInJail() { return relativePosition == JAIL; }
-    public boolean isAtVictory() { return relativePosition >= getVictoryPosition() - 64; }
-    public boolean isOnLadder() { return relativePosition >= LADDER_START; }
+    public boolean isInJail() {
+        return relativePosition == JAIL;
+    }
+
+    public boolean isAtVictory() {
+        return relativePosition == getVictoryRelative();
+    }
+
+    public boolean isOnLadder() {
+        return relativePosition >= LADDER_START;
+    }
 
     public void exitJail() {
-        if (!isInJail()) throw new IllegalStateException("La ficha no está en la cárcel");
+        if (!isInJail())
+            throw new IllegalStateException("La ficha no está en la cárcel");
         this.relativePosition = 0;
     }
 
     public void move(int steps) {
-        if (isInJail()) throw new IllegalStateException("La ficha está en la cárcel");
+        if (isInJail())
+            throw new IllegalStateException("La ficha está en la cárcel");
         int newPos = relativePosition + steps;
-        int victoryRel = getVictoryPosition() - 64;
+        int victoryRel = getVictoryRelative();
         if (newPos > victoryRel) {
             throw new IllegalStateException(
-                "Necesitas exactamente " + (victoryRel - relativePosition) + " para llegar a la victoria"
-            );
+                    "Necesitas exactamente " + (victoryRel - relativePosition) + " para llegar a la victoria");
         }
         this.relativePosition = newPos;
     }
 
     public boolean canMove(int steps) {
-        if (isInJail() || isAtVictory()) return false;
-        return relativePosition + steps <= (getVictoryPosition() - 64);
+        if (isInJail() || isAtVictory())
+            return false;
+        return relativePosition + steps <= getVictoryRelative();
     }
 
-    public void sendToJail() { this.relativePosition = JAIL; }
+    public void sendToJail() {
+        this.relativePosition = JAIL;
+    }
 
-    public void sendHome() { this.relativePosition = LADDER_START; }
+    public void sendHome() {
+        this.relativePosition = LADDER_START;
+    }
 
     public int getAbsolutePosition() {
-        if (isInJail()) return JAIL;
+        if (isInJail())
+            return JAIL;
         if (relativePosition < COMMON_TRACK) {
             return (exitAbsolutePosition + relativePosition) % COMMON_TRACK;
         }
@@ -75,15 +94,17 @@ public class Piece {
     }
 
     public int getAbsolutePositionAfterMove(int steps) {
-        if (isInJail() || isAtVictory()) return -1;
+        if (isInJail() || isAtVictory())
+            return -1;
         int newRelPos = relativePosition + steps;
-        int victoryRel = getVictoryPosition() - 64;
-        if (newRelPos > victoryRel) return -1;
-        
+        int victoryRel = getVictoryRelative();
+        if (newRelPos > victoryRel)
+            return -1;
+
         if (newRelPos < COMMON_TRACK) {
             return (exitAbsolutePosition + newRelPos) % COMMON_TRACK;
         }
-        
+
         int ladderRelative = newRelPos - LADDER_START;
         return switch (color) {
             case "AMARILLO" -> 64 + ladderRelative;
@@ -94,7 +115,15 @@ public class Piece {
         };
     }
 
-    public String getId() { return id; }
-    public int getRelativePosition() { return relativePosition; }
-    public int getExitAbsolutePosition() { return exitAbsolutePosition; }
+    public String getId() {
+        return id;
+    }
+
+    public int getRelativePosition() {
+        return relativePosition;
+    }
+
+    public int getExitAbsolutePosition() {
+        return exitAbsolutePosition;
+    }
 }
