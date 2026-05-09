@@ -25,8 +25,8 @@ import java.util.Objects;
 @Controller
 public class ParquesWebSocketController {
 
-    private static final int[] EXIT_POSITIONS = {0, 17, 34, 51};
-    private static final String[] COLORS = {"AMARILLO", "AZUL", "ROJO", "VERDE"};
+    private static final int[] EXIT_POSITIONS = {0, 49, 32, 17};
+    private static final String[] COLORS = {"AMARILLO", "AZUL", "VERDE", "ROJO"};
 
     private final CreateGameUseCase createGameUseCase;
     private final RollDiceUseCase rollDiceUseCase;
