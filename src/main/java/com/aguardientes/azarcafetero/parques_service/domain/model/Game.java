@@ -54,6 +54,7 @@ public class Game {
 
     private void handlePairRoll(Player player, Dice dice) {
         player.incrementConsecutivePairs();
+        player.resetJailAttempts();
 
         if (player.getConsecutivePairs() >= 3) {
             Piece mostAdvanced = player.getMostAdvancedActivePiece();
@@ -78,28 +79,13 @@ public class Game {
         player.resetConsecutivePairs();
 
         if (player.allPiecesInJail()) {
-            boolean hasFive = die1 == 5 || die2 == 5;
-
-            if (hasFive) {
+            player.incrementJailAttempts();
+            if (player.hasExhaustedJailAttempts()) {
                 player.resetJailAttempts();
-                this.moveValue = (die1 == 5) ? die2 : die1;
-                this.jailExitAvailable = true;
-                this.diceRolled = true;
+                nextTurn();
             } else {
-                player.incrementJailAttempts();
-                if (player.hasExhaustedJailAttempts()) {
-                    player.getPiecesInJail().get(0).exitJail();
-                    player.resetJailAttempts();
-                    this.moveValue = dice.getTotal();
-                    this.diceRolled = true;
-                } else {
-                    nextTurn();
-                }
+                this.diceRolled = false; 
             }
-        } else if (player.hasAnyPieceInJail() && (die1 == 5 || die2 == 5)) {
-            this.moveValue = (die1 == 5) ? die2 : die1;
-            this.jailExitAvailable = true;
-            this.diceRolled = true;
         } else {
             this.moveValue = dice.getTotal();
             this.diceRolled = true;
