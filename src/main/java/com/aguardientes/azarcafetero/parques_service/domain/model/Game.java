@@ -68,21 +68,9 @@ public class Game {
         List<Piece> inJail = player.getPiecesInJail();
 
         if (!inJail.isEmpty()) {
-            if (dice.isSpecialPair()) {
-                inJail.forEach(Piece::exitJail);
-                this.moveValue = dice.getTotal();
-            } else if (inJail.size() == 1) {
-                inJail.get(0).exitJail();
-                this.moveValue = die1;
-            } else {
-                inJail.get(0).exitJail();
-                inJail.get(1).exitJail();
-                this.moveValue = dice.getTotal();
-            }
-        } else {
-            this.moveValue = dice.getTotal();
+            this.jailExitAvailable = true;
         }
-
+        this.moveValue = dice.getTotal();
         this.diceRolled = true;
     }
 
@@ -155,9 +143,19 @@ public class Game {
 
     private void applyMove(Player player, Piece piece, int steps) {
         if (piece.isInJail()) {
-            piece.exitJail();
-            // User requested: "The piece should just get out of jail and that's it"
-            // So we don't call piece.move(steps) here.
+            boolean isPair = die1 == die2;
+            if (isPair) {
+                // Rule: Special pairs (1-1, 6-6) exit ALL. Others exit 2.
+                boolean isSpecial = die1 == 1 || die1 == 6;
+                List<Piece> inJail = player.getPiecesInJail();
+                if (isSpecial) {
+                    inJail.forEach(Piece::exitJail);
+                } else {
+                    inJail.stream().limit(2).forEach(Piece::exitJail);
+                }
+            } else {
+                piece.exitJail();
+            }
             checkCaptures(player, piece);
             return;
         }
