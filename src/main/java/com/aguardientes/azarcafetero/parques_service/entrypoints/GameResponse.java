@@ -15,7 +15,7 @@ public class GameResponse {
     private int moveValue;
     private boolean diceRolled;
     private boolean jailExitAvailable;
-    private boolean finished;
+    private String state;
     private String winnerId;
     private List<PlayerResponse> players;
 
@@ -28,7 +28,7 @@ public class GameResponse {
         r.moveValue = game.getMoveValue();
         r.diceRolled = game.isDiceRolled();
         r.jailExitAvailable = game.isJailExitAvailable();
-        r.finished = game.isFinished();
+        r.state = game.getState().name();
         r.winnerId = game.getWinnerId();
         r.players = game.getPlayers().stream().map(PlayerResponse::from).toList();
         return r;
@@ -41,7 +41,7 @@ public class GameResponse {
     public int getMoveValue() { return moveValue; }
     public boolean isDiceRolled() { return diceRolled; }
     public boolean isJailExitAvailable() { return jailExitAvailable; }
-    public boolean isFinished() { return finished; }
+    public String getState() { return state; }
     public String getWinnerId() { return winnerId; }
     public List<PlayerResponse> getPlayers() { return players; }
 

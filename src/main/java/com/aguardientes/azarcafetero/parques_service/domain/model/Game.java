@@ -19,13 +19,13 @@ public class Game {
     private int moveValue;
     private boolean jailExitAvailable;
     private boolean diceRolled;
-    private boolean finished;
+    private GameState state;
     private String winnerId;
 
     public Game(String id, List<Player> players) {
         this.id = id;
-        this.currentTurn = new Random().nextInt(players.size());
-        this.finished = false;
+        this.currentTurn = 0; // Host always starts
+        this.state = GameState.WAITING_FOR_PLAYERS;
         this.diceRolled = false;
         this.players = new ArrayList<>(players);
     }
@@ -33,9 +33,9 @@ public class Game {
     // ─── Roll ────────────────────────────────────────────────────────────────
 
     public void rollDice(String playerId) {
+        if (state != GameState.IN_PROGRESS) throw new IllegalStateException("El juego no ha iniciado");
         validateTurn(playerId);
         if (diceRolled) throw new IllegalStateException("Ya lanzaste el dado, debes mover primero");
-        if (finished) throw new IllegalStateException("El juego ya terminó");
 
         Dice dice = new Dice();
         dice.roll();
@@ -121,9 +121,9 @@ public class Game {
     // ─── Move ────────────────────────────────────────────────────────────────
 
     public void movePiece(String playerId, String pieceId) {
+        if (state != GameState.IN_PROGRESS) throw new IllegalStateException("El juego no ha iniciado");
         validateTurn(playerId);
         if (!diceRolled) throw new IllegalStateException("Debes lanzar el dado primero");
-        if (finished) throw new IllegalStateException("El juego ya terminó");
 
         Player player = findPlayer(playerId);
         Piece piece = player.findPiece(pieceId);
@@ -132,7 +132,7 @@ public class Game {
         applyMove(player, piece, effectiveMoveValue);
 
         if (player.hasFinished()) {
-            this.finished = true;
+            this.state = GameState.FINISHED;
             this.winnerId = playerId;
         }
 
@@ -230,8 +230,15 @@ public class Game {
     }
 
     public void addPlayer(Player player) {
+        if (state != GameState.WAITING_FOR_PLAYERS) throw new IllegalStateException("El juego ya inició");
         if (players.size() >= 4) throw new IllegalStateException("El juego ya tiene 4 jugadores");
         players.add(player);
+    }
+
+    public void start() {
+        if (players.size() < 2) throw new IllegalStateException("Se necesitan al menos 2 jugadores");
+        if (state != GameState.WAITING_FOR_PLAYERS) throw new IllegalStateException("El juego ya inició");
+        this.state = GameState.IN_PROGRESS;
     }
 
     // ─── Getters ─────────────────────────────────────────────────────────────
@@ -244,7 +251,8 @@ public class Game {
     public boolean isDiceRolled() { return diceRolled; }
     public int getCurrentTurn() { return currentTurn; }
     public List<Player> getPlayers() { return players; }
-    public boolean isFinished() { return finished; }
+    public GameState getState() { return state; }
+    public boolean isFinished() { return state == GameState.FINISHED; }
     public String getWinnerId() { return winnerId; }
     public Player getCurrentPlayer() { return players.get(currentTurn); }
 }

@@ -81,7 +81,6 @@ public class ParquesWebSocketController {
         try {
             game = gameRepository.findById(gameId);
         } catch (IllegalArgumentException e) {
-            // El juego no existe aún, crear con este jugador
             List<CreateGameUseCase.PlayerInput> inputs =
                     List.of(new CreateGameUseCase.PlayerInput(msg.getPlayerId(), msg.getPlayerName()));
             game = createGameUseCase.execute(gameId, inputs);
@@ -89,7 +88,6 @@ public class ParquesWebSocketController {
             return;
         }
 
-        // Verificar si el jugador ya está en el juego
         boolean alreadyIn = game.getPlayers().stream()
                 .anyMatch(p -> p.getId().equals(msg.getPlayerId()));
 
@@ -104,6 +102,14 @@ public class ParquesWebSocketController {
         }
 
         messagingTemplate.convertAndSend("/topic/game/" + game.getId(), GameResponse.from(game));
+    }
+
+    @MessageMapping("/game/{gameId}/start")
+    public void startGame(@DestinationVariable String gameId) {
+        Game game = gameRepository.findById(gameId);
+        game.start();
+        gameRepository.save(game);
+        messagingTemplate.convertAndSend("/topic/game/" + gameId, GameResponse.from(game));
     }
 
     @MessageMapping("/game/{gameId}/roll")
