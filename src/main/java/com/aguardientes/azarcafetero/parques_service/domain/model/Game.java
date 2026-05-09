@@ -156,9 +156,8 @@ public class Game {
     private void applyMove(Player player, Piece piece, int steps) {
         if (piece.isInJail()) {
             piece.exitJail();
-            if (steps > 0 && piece.canMove(steps)) {
-                piece.move(steps);
-            }
+            // User requested: "The piece should just get out of jail and that's it"
+            // So we don't call piece.move(steps) here.
             checkCaptures(player, piece);
             return;
         }
