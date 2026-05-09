@@ -120,7 +120,7 @@ public class ParquesWebSocketController {
 
     @MessageMapping("/game/{gameId}/move")
     public void movePiece(MovePieceMessage msg, @DestinationVariable String gameId) {
-        Game game = movePieceUseCase.execute(gameId, msg.getPlayerId(), msg.getPieceId());
+        Game game = movePieceUseCase.execute(gameId, msg.getPlayerId(), msg.getPieceId(), msg.getDiceSelection());
         messagingTemplate.convertAndSend("/topic/game/" + gameId, GameResponse.from(game));
     }
 

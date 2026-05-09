@@ -14,6 +14,8 @@ public class GameResponse {
     private int die2;
     private int moveValue;
     private boolean diceRolled;
+    private boolean die1Used;
+    private boolean die2Used;
     private boolean jailExitAvailable;
     private String state;
     private String winnerId;
@@ -27,6 +29,8 @@ public class GameResponse {
         r.die2 = game.getDie2();
         r.moveValue = game.getMoveValue();
         r.diceRolled = game.isDiceRolled();
+        r.die1Used = game.isDie1Used();
+        r.die2Used = game.isDie2Used();
         r.jailExitAvailable = game.isJailExitAvailable();
         r.state = game.getState().name();
         r.winnerId = game.getWinnerId();
@@ -40,6 +44,8 @@ public class GameResponse {
     public int getDie2() { return die2; }
     public int getMoveValue() { return moveValue; }
     public boolean isDiceRolled() { return diceRolled; }
+    public boolean isDie1Used() { return die1Used; }
+    public boolean isDie2Used() { return die2Used; }
     public boolean isJailExitAvailable() { return jailExitAvailable; }
     public String getState() { return state; }
     public String getWinnerId() { return winnerId; }

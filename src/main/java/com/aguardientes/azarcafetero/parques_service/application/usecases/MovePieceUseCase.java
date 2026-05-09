@@ -16,9 +16,9 @@ public class MovePieceUseCase {
         this.eventPublisher = eventPublisher;
     }
 
-    public Game execute(String gameId, String playerId, String pieceId) {
+    public Game execute(String gameId, String playerId, String pieceId, int diceSelection) {
         Game game = repository.findById(gameId);
-        game.movePiece(playerId, pieceId);
+        game.movePiece(playerId, pieceId, diceSelection);
         repository.save(game);
 
         eventPublisher.publish(new PieceMovedEvent(gameId, playerId, pieceId, game.isFinished(), false));

@@ -19,6 +19,8 @@ public class Game {
     private int moveValue;
     private boolean jailExitAvailable;
     private boolean diceRolled;
+    private boolean die1Used;
+    private boolean die2Used;
     private GameState state;
     private String winnerId;
 
@@ -41,6 +43,8 @@ public class Game {
         dice.roll();
         this.die1 = dice.getDie1();
         this.die2 = dice.getDie2();
+        this.die1Used = false;
+        this.die2Used = false;
         this.jailExitAvailable = false;
 
         Player player = findPlayer(playerId);
@@ -94,7 +98,11 @@ public class Game {
 
     // ─── Move ────────────────────────────────────────────────────────────────
 
-    public void movePiece(String playerId, String pieceId) {
+    /**
+     * Mueve una ficha usando el dado seleccionado.
+     * @param diceSelection 1: Dado 1, 2: Dado 2, 3: Ambos (suma)
+     */
+    public void movePiece(String playerId, String pieceId, int diceSelection) {
         if (state != GameState.IN_PROGRESS) throw new IllegalStateException("El juego no ha iniciado");
         validateTurn(playerId);
         if (!diceRolled) throw new IllegalStateException("Debes lanzar el dado primero");
@@ -102,16 +110,70 @@ public class Game {
         Player player = findPlayer(playerId);
         Piece piece = player.findPiece(pieceId);
 
-        int effectiveMoveValue = resolveEffectiveMoveValue(player, piece);
-        applyMove(player, piece, effectiveMoveValue);
+        // Validar selección de dados
+        validateDiceSelection(diceSelection);
+
+        int steps = calculateSteps(diceSelection);
+        applyMove(player, piece, steps);
+
+        // Marcar dados como usados
+        updateDiceUsage(diceSelection);
 
         if (player.hasFinished()) {
             this.state = GameState.FINISHED;
             this.winnerId = playerId;
+            return;
         }
 
-        this.diceRolled = false;
-        nextTurn();
+        // Finalizar turno o permitir más movimientos
+        checkTurnFinalization();
+    }
+
+    private void validateDiceSelection(int selection) {
+        if (selection == 1 && die1Used) throw new IllegalStateException("El dado 1 ya fue usado");
+        if (selection == 2 && die2Used) throw new IllegalStateException("El dado 2 ya fue usado");
+        if (selection == 3 && (die1Used || die2Used)) throw new IllegalStateException("Uno de los dados ya fue usado, no puedes usar la suma");
+    }
+
+    private int calculateSteps(int selection) {
+        return switch (selection) {
+            case 1 -> die1;
+            case 2 -> die2;
+            case 3 -> die1 + die2;
+            default -> throw new IllegalArgumentException("Selección de dados inválida");
+        };
+    }
+
+    private void updateDiceUsage(int selection) {
+        if (selection == 1) die1Used = true;
+        else if (selection == 2) die2Used = true;
+        else if (selection == 3) {
+            die1Used = true;
+            die2Used = true;
+        }
+    }
+
+    private void checkTurnFinalization() {
+        // Si ambos dados están usados, el turno termina
+        if (die1Used && die2Used) {
+            this.diceRolled = false;
+            // Regla: Si sacó par, tiene otro turno (no llamamos a nextTurn)
+            if (die1 != die2) {
+                nextTurn();
+            }
+        } else {
+            // Aún queda un dado, verificar si el jugador PUEDE moverlo
+            if (!canPlayerMoveAnyPiece()) {
+                this.diceRolled = false;
+                nextTurn();
+            }
+        }
+    }
+
+    private boolean canPlayerMoveAnyPiece() {
+        Player player = players.get(currentTurn);
+        int remainingDie = !die1Used ? die1 : die2;
+        return player.getPieces().stream().anyMatch(p -> p.canMove(remainingDie) || (p.isInJail() && jailExitAvailable));
     }
 
     private int resolveEffectiveMoveValue(Player player, Piece piece) {
@@ -232,6 +294,8 @@ public class Game {
     public int getMoveValue() { return moveValue; }
     public boolean isJailExitAvailable() { return jailExitAvailable; }
     public boolean isDiceRolled() { return diceRolled; }
+    public boolean isDie1Used() { return die1Used; }
+    public boolean isDie2Used() { return die2Used; }
     public int getCurrentTurn() { return currentTurn; }
     public List<Player> getPlayers() { return players; }
     public GameState getState() { return state; }

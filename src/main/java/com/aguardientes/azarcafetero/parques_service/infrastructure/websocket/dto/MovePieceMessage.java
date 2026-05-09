@@ -10,8 +10,13 @@ public class MovePieceMessage {
     @JsonProperty("pieceId")
     private String pieceId;
 
+    @JsonProperty("diceSelection")
+    private int diceSelection;
+
     public String getPlayerId() { return playerId; }
     public void setPlayerId(String playerId) { this.playerId = playerId; }
     public String getPieceId() { return pieceId; }
     public void setPieceId(String pieceId) { this.pieceId = pieceId; }
+    public int getDiceSelection() { return diceSelection; }
+    public void setDiceSelection(int diceSelection) { this.diceSelection = diceSelection; }
 }
