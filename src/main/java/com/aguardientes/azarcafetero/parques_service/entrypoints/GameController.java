@@ -124,8 +124,10 @@ public class GameController {
             @Parameter(description = "ID of the player moving a piece", required = true)
             @RequestParam String playerId,
             @Parameter(description = "ID of the piece to move (e.g. p1-piece-0, p1-piece-1)", required = true)
-            @RequestParam String pieceId) {
-        Game game = movePieceUseCase.execute(gameId, playerId, pieceId);
+            @RequestParam String pieceId,
+            @Parameter(description = "Dice selection (which dice result to use for the move)", required = true)
+            @RequestParam int diceSelection) {
+        Game game = movePieceUseCase.execute(gameId, playerId, pieceId, diceSelection);
         return ResponseEntity.ok(GameResponse.from(game));
     }
 
