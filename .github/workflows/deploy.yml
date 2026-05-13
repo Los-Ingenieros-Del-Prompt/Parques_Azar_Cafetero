@@ -1,43 +1,74 @@
-name: Deploy Parques Service
-
+name: Build & Deploy Parques
+ 
 on:
   push:
-    branches: [main, feature/despliegue]
-
+    branches: [main]
+ 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+ 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Login DockerHub
+        uses: actions/checkout@v4
+ 
+      - name: Login a DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
+ 
       - name: Build y Push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest
-
-      - name: Deploy en EC2
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            docker system prune -af --volumes
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest
-            docker stop azar-parques || true
-            docker rm azar-parques || true
-            docker run -d \
-              --name azar-parques \
-              --network host \
-              -e SERVER_PORT=8086 \
-              --restart unless-stopped \
-              ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest
+ 
+      - name: Deploy en EC2 via SSM
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "docker pull ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest",
+              "docker stop azar-parques || true",
+              "docker rm azar-parques || true",
+              "docker run -d --name azar-parques --restart unless-stopped -p 8086:8086 -e LOBBY_SERVICE_URL=http://azar-alb-774975018.us-east-1.elb.amazonaws.com ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest"
+            ]' \
+            --region us-east-1 \
+            --query "Command.CommandId" \
+            --output text)
+ 
+          echo "SSM Command ID: $COMMAND_ID"
+ 
+          # Esperar a que termine
+          for i in {1..20}; do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+              --region us-east-1 \
+              --query "Status" \
+              --output text)
+            echo "Estado: $STATUS"
+            if [ "$STATUS" = "Success" ]; then
+              echo "Deploy exitoso!"
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+              echo "Deploy fallido!"
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+                --region us-east-1 \
+                --query "StandardErrorContent" \
+                --output text
+              exit 1
+            fi
+          done
+          echo "Timeout esperando SSM"
+          exit 1
