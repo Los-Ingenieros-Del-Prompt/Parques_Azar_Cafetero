@@ -3,8 +3,9 @@ package com.aguardientes.azarcafetero.parques_service.domain.model;
 public class Piece {
 
     private static final int JAIL = -1;
-    private static final int COMMON_TRACK = 64;
-    private static final int LADDER_START = 64;
+    private static final int COMMON_TRACK = 68;
+    private static final int THRESHOLD = 63; // casillas del anillo antes de la escalera
+    private static final int VICTORY_RELATIVE = 70; // 63 + 7
 
     private final String id;
     private final String color;
@@ -18,116 +19,89 @@ public class Piece {
         this.relativePosition = JAIL;
     }
 
-    /**
-     * Retorna la posición RELATIVA necesaria para ganar (distancia total desde la
-     * salida).
-     */
     public int getVictoryRelative() {
-        return 68;
+        return VICTORY_RELATIVE;
     }
 
     private int getCommonTrackThreshold() {
-        return switch (color) {
-            case "AMARILLO", "VERDE" -> 61;
-            case "ROJO", "AZUL" -> 60;
-            default -> 64;
-        };
+        return THRESHOLD;
     }
 
-    public boolean isInJail() {
-        return relativePosition == JAIL;
-    }
-
-    public boolean isAtVictory() {
-        return relativePosition == getVictoryRelative();
-    }
-
-    public boolean isOnLadder() {
-        return relativePosition >= getCommonTrackThreshold();
-    }
+    public boolean isInJail()    { return relativePosition == JAIL; }
+    public boolean isAtVictory() { return relativePosition == VICTORY_RELATIVE; }
+    public boolean isOnLadder()  { return relativePosition >= THRESHOLD && relativePosition < VICTORY_RELATIVE; }
 
     public void exitJail() {
-        if (!isInJail())
-            throw new IllegalStateException("La ficha no está en la cárcel");
+        if (!isInJail()) throw new IllegalStateException("La ficha no está en la cárcel");
         this.relativePosition = 0;
     }
 
     public void move(int steps) {
-        if (isInJail())
-            throw new IllegalStateException("La ficha está en la cárcel");
+        if (isInJail()) throw new IllegalStateException("La ficha está en la cárcel");
         int newPos = relativePosition + steps;
-        int victoryRel = getVictoryRelative();
-        if (newPos > victoryRel) {
+        if (newPos > VICTORY_RELATIVE) {
             throw new IllegalStateException(
-                    "Necesitas exactamente " + (victoryRel - relativePosition) + " para llegar a la victoria");
+                    "Necesitas exactamente " + (VICTORY_RELATIVE - relativePosition) + " para llegar a la victoria");
         }
         this.relativePosition = newPos;
     }
 
     public boolean canMove(int steps) {
-        if (isInJail() || isAtVictory())
-            return false;
-        return relativePosition + steps <= getVictoryRelative();
+        if (isInJail() || isAtVictory()) return false;
+        return relativePosition + steps <= VICTORY_RELATIVE;
     }
 
     public void sendToJail() {
         this.relativePosition = JAIL;
     }
 
+    /** Por castigo de 3 pares: vuelve al inicio de la escalera (decisión de juego). */
     public void sendHome() {
-        this.relativePosition = getCommonTrackThreshold();
+        this.relativePosition = THRESHOLD;
     }
 
     public int getAbsolutePosition() {
-        if (isInJail())
-            return JAIL;
-        int threshold = getCommonTrackThreshold();
-        if (relativePosition < threshold) {
-            return (exitAbsolutePosition + relativePosition) % 64;
-        }
-        // Asymmetric Ladder mapping
-        int ladderRelative = relativePosition - threshold;
-        return switch (color) {
-            case "AMARILLO" -> 64 + ladderRelative;
-            case "AZUL" -> 71 + ladderRelative;
-            case "VERDE" -> 79 + ladderRelative;
-            case "ROJO" -> 90 + ladderRelative;
-            default -> relativePosition;
-        };
+        return mapRelToAbs(relativePosition);
     }
 
     public int getAbsolutePositionAfterMove(int steps) {
-        if (isInJail() || isAtVictory())
-            return -1;
-        int newRelPos = relativePosition + steps;
-        int victoryRel = getVictoryRelative();
-        if (newRelPos > victoryRel)
-            return -1;
+        if (isInJail() || isAtVictory()) return -1;
+        int newRel = relativePosition + steps;
+        if (newRel > VICTORY_RELATIVE) return -1;
+        return mapRelToAbs(newRel);
+    }
 
-        int threshold = getCommonTrackThreshold();
-        if (newRelPos < threshold) {
-            return (exitAbsolutePosition + newRelPos) % 64;
+    private int mapRelToAbs(int rel) {
+        if (rel == JAIL) return JAIL;
+
+        // Victoria
+        if (rel == VICTORY_RELATIVE) {
+            return switch (color) {
+                case "AMARILLO" -> 112;
+                case "AZUL"     -> 113;
+                case "ROJO"     -> 114;
+                case "VERDE"    -> 115;
+                default         -> -1;
+            };
         }
 
-        int ladderRelative = newRelPos - threshold;
+        // Anillo común (0–67)
+        if (rel < THRESHOLD) {
+            return (exitAbsolutePosition + rel) % COMMON_TRACK;
+        }
+
+        // Escalera (7 casillas)
+        int ladderRel = rel - THRESHOLD;
         return switch (color) {
-            case "AMARILLO" -> 64 + ladderRelative;
-            case "AZUL" -> 71 + ladderRelative;
-            case "VERDE" -> 79 + ladderRelative;
-            case "ROJO" -> 90 + ladderRelative;
-            default -> newRelPos;
+            case "AZUL"     -> 68 + ladderRel; // 68–74
+            case "ROJO"     -> 75 + ladderRel; // 75–81
+            case "VERDE"    -> 82 + ladderRel; // 82–88
+            case "AMARILLO" -> 89 + ladderRel; // 89–95
+            default         -> rel;
         };
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public int getRelativePosition() {
-        return relativePosition;
-    }
-
-    public int getExitAbsolutePosition() {
-        return exitAbsolutePosition;
-    }
+    public String getId() { return id; }
+    public int getRelativePosition() { return relativePosition; }
+    public int getExitAbsolutePosition() { return exitAbsolutePosition; }
 }
