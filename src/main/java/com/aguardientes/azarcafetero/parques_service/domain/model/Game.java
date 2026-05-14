@@ -81,18 +81,35 @@ public class Game {
 
     private void handleNormalRoll(Player player, Dice dice) {
         player.resetConsecutivePairs();
+        this.moveValue = dice.getTotal();
+        this.diceRolled = true;
+    }
 
-        if (player.allPiecesInJail()) {
+    public void passTurn(String playerId) {
+        if (state != GameState.IN_PROGRESS) throw new IllegalStateException("El juego no ha iniciado");
+        validateTurn(playerId);
+        if (!diceRolled) throw new IllegalStateException("Aún no has lanzado el dado");
+
+        if (canPlayerMoveAnyPiece()) {
+            throw new IllegalStateException("Tienes movimientos válidos, no puedes pasar");
+        }
+
+        Player player = findPlayer(playerId);
+
+        if (player.allPiecesInJail() && die1 != die2) {
             player.incrementJailAttempts();
             if (player.hasExhaustedJailAttempts()) {
                 player.resetJailAttempts();
+                this.diceRolled = false;
                 nextTurn();
             } else {
                 this.diceRolled = false; 
             }
         } else {
-            this.moveValue = dice.getTotal();
-            this.diceRolled = true;
+            this.diceRolled = false;
+            if (die1 != die2) {
+                nextTurn();
+            }
         }
     }
 
@@ -165,15 +182,30 @@ public class Game {
             // Aún queda un dado, verificar si el jugador PUEDE moverlo
             if (!canPlayerMoveAnyPiece()) {
                 this.diceRolled = false;
-                nextTurn();
+                if (die1 != die2) {
+                    nextTurn();
+                }
             }
         }
     }
 
     private boolean canPlayerMoveAnyPiece() {
         Player player = players.get(currentTurn);
-        int remainingDie = !die1Used ? die1 : die2;
-        return player.getPieces().stream().anyMatch(p -> p.canMove(remainingDie) || (p.isInJail() && jailExitAvailable));
+        boolean d1 = !die1Used;
+        boolean d2 = !die2Used;
+        boolean dSum = d1 && d2;
+        
+        if (player.hasAnyPieceInJail() && jailExitAvailable) {
+            return true;
+        }
+
+        return player.getPieces().stream().anyMatch(p -> {
+            if (p.isInJail() || p.isAtVictory()) return false;
+            if (d1 && p.canMove(die1)) return true;
+            if (d2 && p.canMove(die2)) return true;
+            if (dSum && p.canMove(die1 + die2)) return true;
+            return false;
+        });
     }
 
     private int resolveEffectiveMoveValue(Player player, Piece piece) {
