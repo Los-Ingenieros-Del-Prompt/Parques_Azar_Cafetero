@@ -145,7 +145,6 @@ public class ParquesWebSocketController {
         Game game = exitJailUseCase.execute(gameId, msg.getPlayerId());
         messagingTemplate.convertAndSend("/topic/game/" + gameId, GameResponse.from(game));
     }
-
     @MessageExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
     public void handleDomainError(RuntimeException ex) {
         messagingTemplate.convertAndSend("/topic/errors", Map.of("error", ex.getMessage()));
