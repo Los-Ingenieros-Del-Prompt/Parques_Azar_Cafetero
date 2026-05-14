@@ -12,7 +12,9 @@ import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dt
 import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dto.MovePieceMessage;
 import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dto.RollDiceMessage;
 import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dto.PassTurnMessage;
+import com.aguardientes.azarcafetero.parques_service.infrastructure.websocket.dto.ExitJailMessage;
 import com.aguardientes.azarcafetero.parques_service.application.usecases.PassTurnUseCase;
+import com.aguardientes.azarcafetero.parques_service.application.usecases.ExitJailUseCase;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -34,6 +36,7 @@ public class ParquesWebSocketController {
     private final RollDiceUseCase rollDiceUseCase;
     private final MovePieceUseCase movePieceUseCase;
     private final PassTurnUseCase passTurnUseCase;
+    private final ExitJailUseCase exitJailUseCase;
     private final GameRepository gameRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -42,12 +45,14 @@ public class ParquesWebSocketController {
             RollDiceUseCase rollDiceUseCase,
             MovePieceUseCase movePieceUseCase,
             PassTurnUseCase passTurnUseCase,
+            ExitJailUseCase exitJailUseCase,
             GameRepository gameRepository,
             SimpMessagingTemplate messagingTemplate) {
         this.createGameUseCase = Objects.requireNonNull(createGameUseCase);
         this.rollDiceUseCase = Objects.requireNonNull(rollDiceUseCase);
         this.movePieceUseCase = Objects.requireNonNull(movePieceUseCase);
         this.passTurnUseCase = Objects.requireNonNull(passTurnUseCase);
+        this.exitJailUseCase = Objects.requireNonNull(exitJailUseCase);
         this.gameRepository = Objects.requireNonNull(gameRepository);
         this.messagingTemplate = Objects.requireNonNull(messagingTemplate);
     }
@@ -132,6 +137,12 @@ public class ParquesWebSocketController {
     @MessageMapping("/game/{gameId}/pass")
     public void passTurn(PassTurnMessage msg, @DestinationVariable String gameId) {
         Game game = passTurnUseCase.execute(gameId, msg.getPlayerId());
+        messagingTemplate.convertAndSend("/topic/game/" + gameId, GameResponse.from(game));
+    }
+
+    @MessageMapping("/game/{gameId}/exitJail")
+    public void exitJail(ExitJailMessage msg, @DestinationVariable String gameId) {
+        Game game = exitJailUseCase.execute(gameId, msg.getPlayerId());
         messagingTemplate.convertAndSend("/topic/game/" + gameId, GameResponse.from(game));
     }
 
