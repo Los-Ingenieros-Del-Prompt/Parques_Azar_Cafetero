@@ -7,9 +7,9 @@ import java.util.Set;
 
 public class Game {
 
-    private static final Set<Integer> SAFE_SQUARES = Set.of(0, 7, 12, 17, 24, 32, 39, 44, 49, 56, 60);
-    private static final int COMMON_TRACK = 64;
-    private static final int VICTORY = 100; // Placeholder, logic is now color-specific
+    
+    private static final Set<Integer> SAFE_SQUARES = Set.of(4, 11, 21, 28, 38, 45, 55, 62);
+    private static final int COMMON_TRACK = 68;
 
     private final String id;
     private final List<Player> players;
