@@ -48,6 +48,7 @@ public class Piece {
 
     public boolean canMove(int steps) {
         if (isInJail() || isAtVictory()) return false;
+        // FIX: debe ser <= VICTORY_RELATIVE (70), no un número menor
         return relativePosition + steps <= VICTORY_RELATIVE;
     }
 
@@ -55,9 +56,13 @@ public class Piece {
         this.relativePosition = JAIL;
     }
 
-    /** Por castigo de 3 pares: vuelve al inicio de la escalera (decisión de juego). */
+    /**
+     * FIX Bug 4: Por castigo de 3 pares consecutivos, la ficha más avanzada
+     * va a la CÁRCEL, no al inicio de la escalera.
+     * La regla colombiana es clara: 3 pares = te mandan preso.
+     */
     public void sendHome() {
-        this.relativePosition = THRESHOLD;
+        this.relativePosition = JAIL;
     }
 
     public int getAbsolutePosition() {
