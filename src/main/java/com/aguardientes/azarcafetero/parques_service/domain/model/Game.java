@@ -221,21 +221,31 @@ public class Game {
         return moveValue;
     }
 
+    public void exitJail(String playerId) {
+        if (state != GameState.IN_PROGRESS) throw new IllegalStateException("El juego no ha iniciado");
+        validateTurn(playerId);
+        if (!diceRolled) throw new IllegalStateException("Aún no has lanzado el dado");
+        if (die1 != die2) throw new IllegalStateException("Solo puedes salir automáticamente con un par");
+        if (die1Used || die2Used) throw new IllegalStateException("Los dados ya fueron usados");
+
+        Player player = findPlayer(playerId);
+        List<Piece> inJail = player.getPiecesInJail();
+        if (inJail.isEmpty()) throw new IllegalStateException("No tienes fichas en la cárcel");
+
+        // Release exactly up to 2 pieces
+        inJail.stream().limit(2).forEach(Piece::exitJail);
+
+        // Consume both dice
+        this.die1Used = true;
+        this.die2Used = true;
+        this.jailExitAvailable = false;
+
+        checkTurnFinalization();
+    }
+
     private void applyMove(Player player, Piece piece, int steps) {
         if (piece.isInJail()) {
-            boolean isPair = die1 == die2;
-            if (isPair) {
-                // Rule: Special pairs (1-1, 6-6) exit ALL. Others exit 2.
-                boolean isSpecial = die1 == 1 || die1 == 6;
-                List<Piece> inJail = player.getPiecesInJail();
-                if (isSpecial) {
-                    inJail.forEach(Piece::exitJail);
-                } else {
-                    inJail.stream().limit(2).forEach(Piece::exitJail);
-                }
-            } else {
-                piece.exitJail();
-            }
+            piece.exitJail();
             checkCaptures(player, piece);
             return;
         }

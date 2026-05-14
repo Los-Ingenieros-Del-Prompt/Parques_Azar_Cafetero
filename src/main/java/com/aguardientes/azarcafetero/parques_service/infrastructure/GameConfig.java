@@ -40,4 +40,8 @@ public class GameConfig {
     public com.aguardientes.azarcafetero.parques_service.application.usecases.PassTurnUseCase passTurnUseCase(GameRepository gameRepository) {
         return new com.aguardientes.azarcafetero.parques_service.application.usecases.PassTurnUseCase(gameRepository);
     }
+    @Bean
+    public com.aguardientes.azarcafetero.parques_service.application.usecases.ExitJailUseCase exitJailUseCase(GameRepository gameRepository) {
+        return new com.aguardientes.azarcafetero.parques_service.application.usecases.ExitJailUseCase(gameRepository);
+    }
 }
