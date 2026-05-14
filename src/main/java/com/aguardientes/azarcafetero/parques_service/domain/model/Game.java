@@ -7,8 +7,9 @@ import java.util.Set;
 
 public class Game {
 
-    
-    private static final Set<Integer> SAFE_SQUARES = Set.of(4, 11, 21, 28, 38, 45, 55, 62);
+
+    private static final Set<Integer> SAFE_SQUARES = Set.of(4, 11, 16, 21, 28, 33, 38, 45, 50, 55, 62, 67);
+
     private static final int COMMON_TRACK = 68;
 
     private final String id;

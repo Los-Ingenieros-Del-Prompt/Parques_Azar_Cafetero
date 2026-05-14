@@ -83,15 +83,18 @@ public class GameResponse {
         private int absolutePosition;
         private int relativePosition;
         private boolean inJail;
-        private boolean atVictory;
+        private boolean atHome;
 
+        
+
+        public boolean isAtHome() { return atHome; }
         public static PieceResponse from(Piece piece) {
             PieceResponse r = new PieceResponse();
             r.id = piece.getId();
             r.absolutePosition = piece.getAbsolutePosition();
             r.relativePosition = piece.getRelativePosition();
             r.inJail = piece.isInJail();
-            r.atVictory = piece.isAtVictory();
+            r.atHome = piece.isAtVictory();
             return r;
         }
 
@@ -99,6 +102,6 @@ public class GameResponse {
         public int getAbsolutePosition() { return absolutePosition; }
         public int getRelativePosition() { return relativePosition; }
         public boolean isInJail() { return inJail; }
-        public boolean isAtVictory() { return atVictory; }
+        
     }
 }
