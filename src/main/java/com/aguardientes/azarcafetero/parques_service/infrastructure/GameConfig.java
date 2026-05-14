@@ -35,4 +35,9 @@ public class GameConfig {
     public MovePieceUseCase movePieceUseCase(GameRepository gameRepository, EventPublisher eventPublisher) {
         return new MovePieceUseCase(gameRepository, eventPublisher);
     }
+
+    @Bean
+    public com.aguardientes.azarcafetero.parques_service.application.usecases.PassTurnUseCase passTurnUseCase(GameRepository gameRepository) {
+        return new com.aguardientes.azarcafetero.parques_service.application.usecases.PassTurnUseCase(gameRepository);
+    }
 }
