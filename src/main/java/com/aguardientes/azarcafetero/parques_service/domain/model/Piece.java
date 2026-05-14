@@ -23,12 +23,14 @@ public class Piece {
      * salida).
      */
     public int getVictoryRelative() {
+        return 68;
+    }
+
+    private int getCommonTrackThreshold() {
         return switch (color) {
-            case "AMARILLO" -> 70; // 64 (track) + (70-64 ladder)
-            case "AZUL" -> 71; // 64 (track) + (78-71 ladder)
-            case "VERDE" -> 74; // 64 (track) + (89-79 ladder)
-            case "ROJO" -> 71; // 64 (track) + (97-90 ladder)
-            default -> 100;
+            case "AMARILLO", "VERDE" -> 61;
+            case "ROJO", "AZUL" -> 60;
+            default -> 64;
         };
     }
 
@@ -41,7 +43,7 @@ public class Piece {
     }
 
     public boolean isOnLadder() {
-        return relativePosition >= LADDER_START;
+        return relativePosition >= getCommonTrackThreshold();
     }
 
     public void exitJail() {
@@ -73,17 +75,18 @@ public class Piece {
     }
 
     public void sendHome() {
-        this.relativePosition = LADDER_START;
+        this.relativePosition = getCommonTrackThreshold();
     }
 
     public int getAbsolutePosition() {
         if (isInJail())
             return JAIL;
-        if (relativePosition < COMMON_TRACK) {
-            return (exitAbsolutePosition + relativePosition) % COMMON_TRACK;
+        int threshold = getCommonTrackThreshold();
+        if (relativePosition < threshold) {
+            return (exitAbsolutePosition + relativePosition) % 64;
         }
         // Asymmetric Ladder mapping
-        int ladderRelative = relativePosition - LADDER_START;
+        int ladderRelative = relativePosition - threshold;
         return switch (color) {
             case "AMARILLO" -> 64 + ladderRelative;
             case "AZUL" -> 71 + ladderRelative;
@@ -101,11 +104,12 @@ public class Piece {
         if (newRelPos > victoryRel)
             return -1;
 
-        if (newRelPos < COMMON_TRACK) {
-            return (exitAbsolutePosition + newRelPos) % COMMON_TRACK;
+        int threshold = getCommonTrackThreshold();
+        if (newRelPos < threshold) {
+            return (exitAbsolutePosition + newRelPos) % 64;
         }
 
-        int ladderRelative = newRelPos - LADDER_START;
+        int ladderRelative = newRelPos - threshold;
         return switch (color) {
             case "AMARILLO" -> 64 + ladderRelative;
             case "AZUL" -> 71 + ladderRelative;
