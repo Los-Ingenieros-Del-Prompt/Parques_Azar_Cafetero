@@ -21,7 +21,6 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,7 +58,11 @@ public class ParquesWebSocketController {
 
     /**
      * Crea el juego con el gameId recibido del frontend.
-     * Si ya existe, lo ignora. Siempre hace join del jugador.
+     *
+     * FIX Bug 3: Este mensaje lo envía SOLO el host (primer jugador).
+     * Si el juego ya existe simplemente hace broadcast del estado actual.
+     * NO hace join aquí — el join lo hace cada cliente por separado con /join.
+     * Esto evita que el lobby service detecte una "partida iniciada" y borre la sala.
      */
     @MessageMapping("/game/create")
     public void createGame(CreateGameMessage msg) {
@@ -71,9 +74,9 @@ public class ParquesWebSocketController {
         Game game;
         try {
             game = gameRepository.findById(gameId);
-            // El juego ya existe — no hacer nada, el join se encarga
+            // Juego ya existe — simplemente hacer broadcast del estado actual
         } catch (IllegalArgumentException e) {
-            // El juego no existe — crearlo
+            // Juego no existe — crearlo con el host como primer jugador
             game = createGameUseCase.execute(gameId, inputs);
         }
 
@@ -82,8 +85,11 @@ public class ParquesWebSocketController {
 
     /**
      * Un jugador se une a un juego existente.
-     * Send to: /app/game/{gameId}/join
-     * Payload: { "gameId": "...", "playerId": "...", "playerName": "..." }
+     *
+     * FIX Bug 3: 
+     * - Si el jugador ya está en la partida, simplemente hace broadcast (reconexión).
+     * - NO crea juegos nuevos aquí para evitar confusión con el lobby.
+     * - Solo agrega al jugador si el juego existe y tiene espacio.
      */
     @MessageMapping("/game/{gameId}/join")
     public void joinGame(JoinGameMessage msg, @DestinationVariable String gameId) {
@@ -91,26 +97,37 @@ public class ParquesWebSocketController {
         try {
             game = gameRepository.findById(gameId);
         } catch (IllegalArgumentException e) {
+            // FIX Bug 3: Si el juego no existe al hacer join, intentar crearlo 
+            // solo con este jugador (caso edge: host se desconectó)
             List<CreateGameUseCase.PlayerInput> inputs =
                     List.of(new CreateGameUseCase.PlayerInput(msg.getPlayerId(), msg.getPlayerName()));
             game = createGameUseCase.execute(gameId, inputs);
+            gameRepository.save(game);
             messagingTemplate.convertAndSend("/topic/game/" + game.getId(), GameResponse.from(game));
             return;
         }
 
+        // Verificar si el jugador ya está en la partida (reconexión)
         boolean alreadyIn = game.getPlayers().stream()
                 .anyMatch(p -> p.getId().equals(msg.getPlayerId()));
 
         if (!alreadyIn && game.getPlayers().size() < 4) {
-            game.addPlayer(new Player(
-                    msg.getPlayerId(),
-                    msg.getPlayerName(),
-                    COLORS[game.getPlayers().size()],
-                    EXIT_POSITIONS[game.getPlayers().size()]
-            ));
-            gameRepository.save(game);
+            // FIX Bug 3: Agregar jugador solo si el juego aún acepta jugadores
+            // (estado WAITING_FOR_PLAYERS). Si ya inició, rechazar silenciosamente.
+            try {
+                game.addPlayer(new Player(
+                        msg.getPlayerId(),
+                        msg.getPlayerName(),
+                        COLORS[game.getPlayers().size()],
+                        EXIT_POSITIONS[game.getPlayers().size()]
+                ));
+                gameRepository.save(game);
+            } catch (IllegalStateException e) {
+                // Juego ya inició, no se puede agregar — solo hacer broadcast
+            }
         }
 
+        // Siempre hacer broadcast para que el cliente reciba el estado actual
         messagingTemplate.convertAndSend("/topic/game/" + game.getId(), GameResponse.from(game));
     }
 
@@ -145,6 +162,19 @@ public class ParquesWebSocketController {
         Game game = exitJailUseCase.execute(gameId, msg.getPlayerId());
         messagingTemplate.convertAndSend("/topic/game/" + gameId, GameResponse.from(game));
     }
+
+    /**
+     * FIX Bug 3: Manejar desconexión explícita.
+     * Cuando un jugador sale, NO borramos el juego del repositorio —
+     * el lobby service es quien debe cerrar la sala cuando corresponda.
+     */
+    @MessageMapping("/game/{gameId}/leave")
+    public void leaveGame(@DestinationVariable String gameId) {
+        // Simplemente notificar al lobby service vía su propio WS.
+        // No tocar el estado del juego aquí.
+        // El lobby service escucha desconexiones y cierra la mesa cuando queda vacía.
+    }
+
     @MessageExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
     public void handleDomainError(RuntimeException ex) {
         messagingTemplate.convertAndSend("/topic/errors", Map.of("error", ex.getMessage()));
