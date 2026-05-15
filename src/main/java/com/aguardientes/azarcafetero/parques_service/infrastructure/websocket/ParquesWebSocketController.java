@@ -238,8 +238,11 @@ public class ParquesWebSocketController {
             game = safeLoad(gameId);
             if (game == null || game.isFinished()) break;
 
-            if (game.isJailExitAvailable()) {
-                // El bot evalúa si salir de la cárcel o mover una ficha activa
+            // ── 2. Salir de la cárcel ─────────────────────────────────────────────────
+            // Solo si AMBOS dados están libres: exitJail consume die1 y die2.
+            // Si uno ya fue usado (bot movió ficha activa en iteración anterior),
+            // omitir este bloque para evitar "Los dados ya fueron usados".
+            if (game.isJailExitAvailable() && !game.isDie1Used() && !game.isDie2Used()) {
                 BotDecision decision = botDecisionService.decide(game, botId, difficulty);
                 if (decision.isExitJail()) {
                     sleep(500);
@@ -252,7 +255,7 @@ public class ParquesWebSocketController {
                     sleep(500);
                     continue;
                 }
-                // Si el bot decide NO salir de la cárcel, cae al paso 3
+                // Bot decidió mover ficha activa en lugar de salir → cae al paso 3
             }
 
             // ── 3. Mover ficha ────────────────────────────────────────────────

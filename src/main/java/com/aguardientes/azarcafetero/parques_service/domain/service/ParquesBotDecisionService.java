@@ -22,12 +22,15 @@ import java.util.*;
  */
 public class ParquesBotDecisionService {
 
+    // ─── Identificadores especiales para decisiones no-movimiento ─────────────
     public static final String EXIT_JAIL_ID = "__EXIT_JAIL__";
     public static final String PASS_ID      = "__PASS__";
 
+    // ─── Casillas seguras (mismo conjunto que Game.java) ──────────────────────
     private static final Set<Integer> SAFE_SQUARES =
             Set.of(4, 11, 16, 21, 28, 33, 38, 45, 50, 55, 62, 67);
 
+    // ─── Pesos heurísticos ────────────────────────────────────────────────────
     private static final double CAPTURE_BONUS    = 20.0;
     private static final double SAFE_BONUS       = 8.0;
     private static final double LADDER_BONUS     = 12.0;
@@ -76,8 +79,10 @@ public class ParquesBotDecisionService {
         boolean d1   = !game.isDie1Used();
         boolean d2   = !game.isDie2Used();
 
-        // Opción: salir de la cárcel con par
-        if (game.isJailExitAvailable()) {
+        // Opción: salir de la cárcel con par.
+        // Solo si AMBOS dados están disponibles: exitJail consume die1 y die2.
+        // Si uno ya fue usado (bot movió ficha activa primero), no se puede exitJail.
+        if (game.isJailExitAvailable() && d1 && d2) {
             decisions.add(new BotDecision(EXIT_JAIL_ID, 0));
         }
 
@@ -171,13 +176,14 @@ public class ParquesBotDecisionService {
         if (targetRel == 70) score += VICTORY_BONUS;
 
         // ── [HARD] Threat modeling: riesgo en la casilla destino ──────────────
-        if (isHard && targetAbs >= 0 && !SAFE_SQUARES.contains(targetAbs)) {
+        // Solo aplica en el recorrido común: en la escalera/home stretch no hay capturas.
+        if (isHard && targetAbs >= 0 && targetAbs < 68 && !SAFE_SQUARES.contains(targetAbs)) {
             double threat = calculateThreat(game, botId, targetAbs);
             score -= threat;
 
             // Compensación: si ya estamos en posición peligrosa, moverse es mejor que quedarse
             int currAbs = piece.getAbsolutePosition();
-            if (currAbs >= 0 && !SAFE_SQUARES.contains(currAbs)) {
+            if (currAbs >= 0 && currAbs < 68 && !SAFE_SQUARES.contains(currAbs)) {
                 double currentThreat = calculateThreat(game, botId, currAbs);
                 score += currentThreat * 0.5; // "salir del peligro" vale la pena
             }
