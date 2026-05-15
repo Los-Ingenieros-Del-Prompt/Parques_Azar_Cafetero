@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.aguardientes.azarcafetero.parques_service.infrastructure.HttpWalletClient;
 
 @Controller
 public class ParquesWebSocketController {
@@ -42,8 +43,10 @@ public class ParquesWebSocketController {
     private final GameRepository gameRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ParquesBotDecisionService botDecisionService;
+    private final HttpWalletClient httpWalletClient;
 
     public ParquesWebSocketController(
+
             CreateGameUseCase createGameUseCase,
             RollDiceUseCase rollDiceUseCase,
             MovePieceUseCase movePieceUseCase,
@@ -51,7 +54,8 @@ public class ParquesWebSocketController {
             ExitJailUseCase exitJailUseCase,
             GameRepository gameRepository,
             SimpMessagingTemplate messagingTemplate,
-            ParquesBotDecisionService botDecisionService) {
+            ParquesBotDecisionService botDecisionService,
+            HttpWalletClient httpWalletClient) {
         this.createGameUseCase  = Objects.requireNonNull(createGameUseCase);
         this.rollDiceUseCase    = Objects.requireNonNull(rollDiceUseCase);
         this.movePieceUseCase   = Objects.requireNonNull(movePieceUseCase);
@@ -60,6 +64,7 @@ public class ParquesWebSocketController {
         this.gameRepository     = Objects.requireNonNull(gameRepository);
         this.messagingTemplate  = Objects.requireNonNull(messagingTemplate);
         this.botDecisionService = Objects.requireNonNull(botDecisionService);
+        this.httpWalletClient = Objects.requireNonNull(httpWalletClient);
     }
 
     // ─── Mensajes existentes ──────────────────────────────────────────────────
@@ -116,12 +121,17 @@ public class ParquesWebSocketController {
     @MessageMapping("/game/{gameId}/start")
     public void startGame(@DestinationVariable String gameId) {
         Game game = gameRepository.findById(gameId);
+        
+        // Descontar apuesta a cada jugador humano
+        game.getPlayers().stream()
+            .filter(p -> !ParquesBotDecisionService.isBot(p.getId()))
+            .forEach(p -> httpWalletClient.placeBet(p.getId(), 100));
+        
         game.start();
         gameRepository.save(game);
         broadcast(gameId);
-        // Si el primer turno es de un bot, dispararlo
         triggerBotTurnIfNeeded(gameId);
-    }
+        }
 
     @MessageMapping("/game/{gameId}/roll")
     public void rollDice(RollDiceMessage msg, @DestinationVariable String gameId) {

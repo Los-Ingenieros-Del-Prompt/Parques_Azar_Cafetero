@@ -38,7 +38,7 @@ jobs:
               "docker pull ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest",
               "docker stop azar-parques || true",
               "docker rm azar-parques || true",
-              "docker run -d --name azar-parques --restart unless-stopped -p 8086:8086 -e LOBBY_SERVICE_URL=http://azar-alb-774975018.us-east-1.elb.amazonaws.com ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest"
+              "docker run -d --name azar-parques --restart unless-stopped -p 8086:8086 -e LOBBY_SERVICE_URL=http://azar-alb-774975018.us-east-1.elb.amazonaws.com -e INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }} ${{ secrets.DOCKERHUB_USERNAME }}/azar-parques:latest"
             ]' \
             --region us-east-1 \
             --query "Command.CommandId" \
