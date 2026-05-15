@@ -1,10 +1,9 @@
 package com.aguardientes.azarcafetero.parques_service.infrastructure;
 
-import com.aguardientes.azarcafetero.parques_service.application.usecases.CreateGameUseCase;
-import com.aguardientes.azarcafetero.parques_service.application.usecases.MovePieceUseCase;
-import com.aguardientes.azarcafetero.parques_service.application.usecases.RollDiceUseCase;
+import com.aguardientes.azarcafetero.parques_service.application.usecases.*;
 import com.aguardientes.azarcafetero.parques_service.domain.ports.EventPublisher;
 import com.aguardientes.azarcafetero.parques_service.domain.ports.GameRepository;
+import com.aguardientes.azarcafetero.parques_service.domain.service.ParquesBotDecisionService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,13 +11,14 @@ import org.springframework.context.annotation.Configuration;
 public class GameConfig {
 
     @Bean
-    public GameRepository gameRepository() {
-        return new InMemoryGameRepository();
-    }
+    public GameRepository gameRepository() { return new InMemoryGameRepository(); }
 
     @Bean
-    public EventPublisher eventPublisher() {
-        return new LogEventPublisher();
+    public EventPublisher eventPublisher() { return new LogEventPublisher(); }
+
+    @Bean
+    public ParquesBotDecisionService parquesBotDecisionService() {
+        return new ParquesBotDecisionService();
     }
 
     @Bean
@@ -37,11 +37,12 @@ public class GameConfig {
     }
 
     @Bean
-    public com.aguardientes.azarcafetero.parques_service.application.usecases.PassTurnUseCase passTurnUseCase(GameRepository gameRepository) {
-        return new com.aguardientes.azarcafetero.parques_service.application.usecases.PassTurnUseCase(gameRepository);
+    public PassTurnUseCase passTurnUseCase(GameRepository gameRepository) {
+        return new PassTurnUseCase(gameRepository);
     }
+
     @Bean
-    public com.aguardientes.azarcafetero.parques_service.application.usecases.ExitJailUseCase exitJailUseCase(GameRepository gameRepository) {
-        return new com.aguardientes.azarcafetero.parques_service.application.usecases.ExitJailUseCase(gameRepository);
+    public ExitJailUseCase exitJailUseCase(GameRepository gameRepository) {
+        return new ExitJailUseCase(gameRepository);
     }
 }
