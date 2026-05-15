@@ -176,13 +176,14 @@ public class ParquesBotDecisionService {
         if (targetRel == 70) score += VICTORY_BONUS;
 
         // ── [HARD] Threat modeling: riesgo en la casilla destino ──────────────
-        if (isHard && targetAbs >= 0 && !SAFE_SQUARES.contains(targetAbs)) {
+        // Solo aplica en el recorrido común: en la escalera/home stretch no hay capturas.
+        if (isHard && targetAbs >= 0 && targetAbs < 68 && !SAFE_SQUARES.contains(targetAbs)) {
             double threat = calculateThreat(game, botId, targetAbs);
             score -= threat;
 
             // Compensación: si ya estamos en posición peligrosa, moverse es mejor que quedarse
             int currAbs = piece.getAbsolutePosition();
-            if (currAbs >= 0 && !SAFE_SQUARES.contains(currAbs)) {
+            if (currAbs >= 0 && currAbs < 68 && !SAFE_SQUARES.contains(currAbs)) {
                 double currentThreat = calculateThreat(game, botId, currAbs);
                 score += currentThreat * 0.5; // "salir del peligro" vale la pena
             }
