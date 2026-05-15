@@ -43,8 +43,6 @@ public class ParquesBotDecisionService {
     public ParquesBotDecisionService() { this.random = new Random(); }
     public ParquesBotDecisionService(Random random) { this.random = random; }
 
-    // ─── Decisión ─────────────────────────────────────────────────────────────
-
     /**
      * Representa una acción posible del bot.
      *   isExitJail() → salir de la cárcel con un par
