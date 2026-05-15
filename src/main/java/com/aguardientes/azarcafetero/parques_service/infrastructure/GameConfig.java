@@ -34,8 +34,8 @@ public class GameConfig {
     }
 
     @Bean
-    public MovePieceUseCase movePieceUseCase(GameRepository gameRepository, EventPublisher eventPublisher) {
-        return new MovePieceUseCase(gameRepository, eventPublisher);
+    public MovePieceUseCase movePieceUseCase(GameRepository gameRepository, EventPublisher eventPublisher, HttpWalletClient httpWalletClient) {
+        return new MovePieceUseCase(gameRepository, eventPublisher, httpWalletClient);
     }
 
     @Bean
