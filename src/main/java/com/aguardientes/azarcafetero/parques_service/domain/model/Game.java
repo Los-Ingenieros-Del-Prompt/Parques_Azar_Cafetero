@@ -2,15 +2,14 @@ package com.aguardientes.azarcafetero.parques_service.domain.model;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 
 public class Game {
 
-
     private static final Set<Integer> SAFE_SQUARES = Set.of(4, 11, 16, 21, 28, 33, 38, 45, 50, 55, 62, 67);
-
     private static final int COMMON_TRACK = 68;
+    // FIX Bug 1&2: constante correcta para la posición de victoria relativa
+    private static final int VICTORY_RELATIVE = 70;
 
     private final String id;
     private final List<Player> players;
@@ -27,7 +26,7 @@ public class Game {
 
     public Game(String id, List<Player> players) {
         this.id = id;
-        this.currentTurn = 0; // Host always starts
+        this.currentTurn = 0;
         this.state = GameState.WAITING_FOR_PLAYERS;
         this.diceRolled = false;
         this.players = new ArrayList<>(players);
@@ -64,6 +63,7 @@ public class Game {
         if (player.getConsecutivePairs() >= 3) {
             Piece mostAdvanced = player.getMostAdvancedActivePiece();
             if (mostAdvanced != null) {
+                // FIX Bug 4: sendHome() ahora manda a la cárcel (ver Piece.java)
                 mostAdvanced.sendHome();
             }
             player.resetConsecutivePairs();
@@ -91,6 +91,7 @@ public class Game {
         validateTurn(playerId);
         if (!diceRolled) throw new IllegalStateException("Aún no has lanzado el dado");
 
+        // FIX Bug 2: solo bloquear si realmente hay movimientos disponibles
         if (canPlayerMoveAnyPiece()) {
             throw new IllegalStateException("Tienes movimientos válidos, no puedes pasar");
         }
@@ -104,7 +105,7 @@ public class Game {
                 this.diceRolled = false;
                 nextTurn();
             } else {
-                this.diceRolled = false; 
+                this.diceRolled = false;
             }
         } else {
             this.diceRolled = false;
@@ -116,10 +117,6 @@ public class Game {
 
     // ─── Move ────────────────────────────────────────────────────────────────
 
-    /**
-     * Mueve una ficha usando el dado seleccionado.
-     * @param diceSelection 1: Dado 1, 2: Dado 2, 3: Ambos (suma)
-     */
     public void movePiece(String playerId, String pieceId, int diceSelection) {
         if (state != GameState.IN_PROGRESS) throw new IllegalStateException("El juego no ha iniciado");
         validateTurn(playerId);
@@ -128,13 +125,11 @@ public class Game {
         Player player = findPlayer(playerId);
         Piece piece = player.findPiece(pieceId);
 
-        // Validar selección de dados
         validateDiceSelection(diceSelection);
 
         int steps = calculateSteps(diceSelection);
         applyMove(player, piece, steps);
 
-        // Marcar dados como usados
         updateDiceUsage(diceSelection);
 
         if (player.hasFinished()) {
@@ -143,7 +138,6 @@ public class Game {
             return;
         }
 
-        // Finalizar turno o permitir más movimientos
         checkTurnFinalization();
     }
 
@@ -172,15 +166,13 @@ public class Game {
     }
 
     private void checkTurnFinalization() {
-        // Si ambos dados están usados, el turno termina
         if (die1Used && die2Used) {
             this.diceRolled = false;
-            // Regla: Si sacó par, tiene otro turno (no llamamos a nextTurn)
             if (die1 != die2) {
                 nextTurn();
             }
         } else {
-            // Aún queda un dado, verificar si el jugador PUEDE moverlo
+            // FIX Bug 2: verificar correctamente si puede mover con el dado restante
             if (!canPlayerMoveAnyPiece()) {
                 this.diceRolled = false;
                 if (die1 != die2) {
@@ -190,58 +182,29 @@ public class Game {
         }
     }
 
+    /**
+     * FIX Bug 1 & 2: Verifica si el jugador actual tiene algún movimiento posible.
+     * Usa canMove() de Piece que ya usa VICTORY_RELATIVE=70 correctamente.
+     */
     private boolean canPlayerMoveAnyPiece() {
         Player player = players.get(currentTurn);
         boolean d1 = !die1Used;
         boolean d2 = !die2Used;
         boolean dSum = d1 && d2;
-        
+
+        // Si hay fichas en cárcel y hay par disponible, puede salir
         if (player.hasAnyPieceInJail() && jailExitAvailable) {
             return true;
         }
 
         return player.getPieces().stream().anyMatch(p -> {
             if (p.isInJail() || p.isAtVictory()) return false;
+            // Usar canMove() que ya contempla VICTORY_RELATIVE=70
             if (d1 && p.canMove(die1)) return true;
             if (d2 && p.canMove(die2)) return true;
             if (dSum && p.canMove(die1 + die2)) return true;
             return false;
         });
-    }
-
-    private int resolveEffectiveMoveValue(Player player, Piece piece) {
-        if (piece.isInJail()) {
-            if (!jailExitAvailable) {
-                throw new IllegalStateException("No puedes sacar esa ficha de la cárcel con este dado");
-            }
-            return moveValue;
-        }
-        if (jailExitAvailable) {
-            return die1 + die2;
-        }
-        return moveValue;
-    }
-
-    public void exitJail(String playerId) {
-        if (state != GameState.IN_PROGRESS) throw new IllegalStateException("El juego no ha iniciado");
-        validateTurn(playerId);
-        if (!diceRolled) throw new IllegalStateException("Aún no has lanzado el dado");
-        if (die1 != die2) throw new IllegalStateException("Solo puedes salir automáticamente con un par");
-        if (die1Used || die2Used) throw new IllegalStateException("Los dados ya fueron usados");
-
-        Player player = findPlayer(playerId);
-        List<Piece> inJail = player.getPiecesInJail();
-        if (inJail.isEmpty()) throw new IllegalStateException("No tienes fichas en la cárcel");
-
-        // Release exactly up to 2 pieces
-        inJail.stream().limit(2).forEach(Piece::exitJail);
-
-        // Consume both dice
-        this.die1Used = true;
-        this.die2Used = true;
-        this.jailExitAvailable = false;
-
-        checkTurnFinalization();
     }
 
     private void applyMove(Player player, Piece piece, int steps) {
@@ -327,6 +290,26 @@ public class Game {
         if (players.size() < 2) throw new IllegalStateException("Se necesitan al menos 2 jugadores");
         if (state != GameState.WAITING_FOR_PLAYERS) throw new IllegalStateException("El juego ya inició");
         this.state = GameState.IN_PROGRESS;
+    }
+
+    public void exitJail(String playerId) {
+        if (state != GameState.IN_PROGRESS) throw new IllegalStateException("El juego no ha iniciado");
+        validateTurn(playerId);
+        if (!diceRolled) throw new IllegalStateException("Aún no has lanzado el dado");
+        if (die1 != die2) throw new IllegalStateException("Solo puedes salir automáticamente con un par");
+        if (die1Used || die2Used) throw new IllegalStateException("Los dados ya fueron usados");
+
+        Player player = findPlayer(playerId);
+        List<Piece> inJail = player.getPiecesInJail();
+        if (inJail.isEmpty()) throw new IllegalStateException("No tienes fichas en la cárcel");
+
+        inJail.stream().limit(2).forEach(Piece::exitJail);
+
+        this.die1Used = true;
+        this.die2Used = true;
+        this.jailExitAvailable = false;
+
+        checkTurnFinalization();
     }
 
     // ─── Getters ─────────────────────────────────────────────────────────────
