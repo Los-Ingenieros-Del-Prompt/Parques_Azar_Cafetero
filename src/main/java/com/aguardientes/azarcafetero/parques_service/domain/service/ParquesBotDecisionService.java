@@ -22,12 +22,15 @@ import java.util.*;
  */
 public class ParquesBotDecisionService {
 
+    // ─── Identificadores especiales para decisiones no-movimiento ─────────────
     public static final String EXIT_JAIL_ID = "__EXIT_JAIL__";
     public static final String PASS_ID      = "__PASS__";
 
+    // ─── Casillas seguras (mismo conjunto que Game.java) ──────────────────────
     private static final Set<Integer> SAFE_SQUARES =
             Set.of(4, 11, 16, 21, 28, 33, 38, 45, 50, 55, 62, 67);
 
+    // ─── Pesos heurísticos ────────────────────────────────────────────────────
     private static final double CAPTURE_BONUS    = 20.0;
     private static final double SAFE_BONUS       = 8.0;
     private static final double LADDER_BONUS     = 12.0;
@@ -39,6 +42,8 @@ public class ParquesBotDecisionService {
 
     public ParquesBotDecisionService() { this.random = new Random(); }
     public ParquesBotDecisionService(Random random) { this.random = random; }
+
+    // ─── Decisión ─────────────────────────────────────────────────────────────
 
     /**
      * Representa una acción posible del bot.
@@ -76,8 +81,10 @@ public class ParquesBotDecisionService {
         boolean d1   = !game.isDie1Used();
         boolean d2   = !game.isDie2Used();
 
-        // Opción: salir de la cárcel con par
-        if (game.isJailExitAvailable()) {
+        // Opción: salir de la cárcel con par.
+        // Solo si AMBOS dados están disponibles: exitJail consume die1 y die2.
+        // Si uno ya fue usado (bot movió ficha activa primero), no se puede exitJail.
+        if (game.isJailExitAvailable() && d1 && d2) {
             decisions.add(new BotDecision(EXIT_JAIL_ID, 0));
         }
 
