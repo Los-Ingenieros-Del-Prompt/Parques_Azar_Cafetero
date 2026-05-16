@@ -133,30 +133,21 @@ class RollDicePassTurnExitJailUseCaseTest {
 
     
     @Test
-    void exitJail_shouldSaveGameWhenPairAndPiecesInJail() {
-        when(repository.findById("game-1")).thenReturn(game);
+void exitJail_shouldSaveGameWhenPairAndPiecesInJail() {
+    Game gameWithPair = new Game("game-1", List.of(
+            new Player("p1", "Karol", "AMARILLO", 4),
+            new Player("p2", "Juan", "AZUL", 21)
+    ));
 
-        // Intentamos hasta obtener un par
-        boolean executed = false;
-        for (int attempt = 0; attempt < 20; attempt++) {
-            game = new Game("game-1", List.of(
-                    new Player("p1", "Karol", "AMARILLO", 4),
-                    new Player("p2", "Juan", "AZUL", 21)
-            ));
-            game.start();
-            when(repository.findById("game-1")).thenReturn(game);
+    gameWithPair.start();
 
-            game.rollDice("p1");
-            if (game.getDie1() == game.getDie2()) {
-                exitJailUseCase.execute("game-1", "p1");
-                verify(repository, atLeastOnce()).save(any(Game.class));
-                executed = true;
-                break;
-            }
-        }
-        // Si en 20 intentos no salió par, lo marcamos como ignorado
-        if (!executed) {
-            System.out.println("Advertencia: no se obtuvo par en 20 intentos");
-        }
-    }
+    // FORZAR par manualmente (si puedes)
+    gameWithPair.setDice(3, 3); // o mock del dice si existe
+
+    when(repository.findById("game-1")).thenReturn(gameWithPair);
+
+    exitJailUseCase.execute("game-1", "p1");
+
+    verify(repository).save(any(Game.class));
+}
 }
